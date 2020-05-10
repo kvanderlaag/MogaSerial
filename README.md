@@ -1,3 +1,17 @@
+## Why does this fork exist?
+
+If you're anything like me, you thought it would be fun to use your Moga Pro controller to play older DirectInput games. My specific use case was Final Fantasy 8's PC port, but you've probably got one of your own in mind. That's cool, I'm not here to judge. When you start getting into DInput, the Moga (or any modern controller) really has way more axes and buttons than most games were expecting you to have back in the day. I, to my frustration, discovered that Final Fantasy 8 only supports up to 10 buttons, and MogaSerial maps L2/R2 as buttons 11 and 12 when you set them to report as buttons. That's no good.
+Older games also largely didn't expect that you'd have both a joystick and an analog stick on your gamepad; popular controllers like the Gravis Game Pad and Gravis Game Pad Pro all reported their directional pad as the traditional PC joystick's...well, joystick input. Final Fantasy 8 is no exception, regrettably.
+Does vJoy have a way to remap button numbers from one to another?
+No, really, that's a legitimate question. I looked into it for a while and I couldn't find any easy way to do it. There are other pieces of sofware that will install yet another virtual input device, and map inputs on your vJoy device to inputs on the new device, but...seriously? I'm already two pieces of software into trying to use this controller on Windows, and I just want to take some child soldiers on an adventure to stop an evil sorceress from compressing time.
+Naturally, my solution was to modify MogaSerial to just...do the things I wanted it to do. Namely, these modifications, when MogaSerial is connected in vJoy mode, do two things:
+1) Swap the button numbers of L2/R2 with the button numbers of L3/R3. L3/R3 now report at 11 and 12, L2/R2 now report as 9 and 10.
+2) Report the directional pad directions as extreme inputs on the left analog stick axes. The analog stick still works, but if you press the directional pad at the same time, the directional pad value will override it.
+This also adds two checkbox toggles to the UI, one for each of these hacks, so you can turn them on or off if you just want to use MogaSerial the way it was before.
+These modifications do nothing in XInput mode.
+
+Full disclosure: I have literally never done MFC programming before, so if I've committed a horrible MFC faux pas or two in the way that I've done anything...well, that's why. It should come as no surprise that this modification comes with absolutely no warranty, though...I guess drop me a line if you have any questions? My initial thought was to add a separate dialog that would let you swap anny control mapping you wanted to any DirectInput button or axis, but, again, I don't do MFC. If anyone feels like doing it, it should be fairly straightforward.
+The solution has also been, for better or worse, updated to VS2019. I like constexpr and ternaries, leave me alone.
 
 ## Moga Serial to Windows Interface
 
