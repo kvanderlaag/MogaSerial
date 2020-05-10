@@ -26,6 +26,7 @@ Revision History:
 #include "stdafx.h"
 #include "MogaSerial.h"
 #include "MogaSerialDlg.h"
+#include "windowsx.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -56,8 +57,9 @@ void CMogaSerialDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_RADIOA, c_TModeA);
 	DDX_Control(pDX, IDC_RADIOB, c_TModeB);
 	DDX_Control(pDX, IDC_RADIOC, c_TModeC);
+	DDX_Check(pDX, IDC_CHECK1, m_dpadAsAnalog);
+	DDX_Check(pDX, IDC_CHECK2, m_swapL2R2andL3R3);
 	DDX_Radio(pDX, IDC_RADIO1, m_iDriver);
-	DDX_Radio(pDX, IDC_RADIOA, m_iTriggerMode);
 	DDX_Control(pDX, IDC_OUTPUT, c_Output);
 	DDX_Control(pDX, IDC_STOPGO, c_StopGo);
 	DDX_Control(pDX, IDC_DEBUG, c_Debug);
@@ -108,12 +110,14 @@ BOOL CMogaSerialDlg::OnInitDialog()
 	UpdateBTList_Start(false);
 
 	// populate listbox vaules, read and validate registry defaults
-	int a,b,c,d;
-	swscanf_s(DefaultRegString,_T("%d,%d,%d,%d"),&a,&b,&c,&d);
-	if (a < 0 || a >= c_BTList.GetCount())	a = 0;
-	if (b < 0 || b >= c_vJoyID.GetCount())	b = 0;
-	if (c < 0 || c > 2)						c = 0;
-	if (d < 0 || d > 1)						d = 0;
+	int a,b,c,d,dpadAnalog,swapTriggers;
+	swscanf_s(DefaultRegString,_T("%d,%d,%d,%d,%d,%d"),&a,&b,&c,&d,&dpadAnalog,&swapTriggers);
+	if (a < 0 || a >= c_BTList.GetCount())		a = 0;
+	if (b < 0 || b >= c_vJoyID.GetCount())		b = 0;
+	if (c < 0 || c > 2)							c = 0;
+	if (d < 0 || d > 1)							d = 0;
+	if (dpadAnalog < 0 || dpadAnalog > 1)		dpadAnalog = 0;
+	if (swapTriggers < 0 || swapTriggers > 1)	dpadAnalog = 0;
 	c_BTList.SetCurSel(a);
 	c_vJoyID.SetCurSel(b);
 	m_iTriggerMode = c;
@@ -474,8 +478,20 @@ void CMogaSerialDlg::MogaHandler_Start()
 		m_Moga.m_TriggerMode = m_iTriggerMode;
 	else
 		m_Moga.m_TriggerMode = 1;
+
+	// some fun compatibility hacks for swapping trigger button numbers
+	// and using the dpad as the left analog stick for older games.
+	m_dpadAsAnalog == BST_CHECKED ?
+		m_Moga.m_dpadAsAnalog = true
+		: m_Moga.m_dpadAsAnalog = false;
+
+	m_swapL2R2andL3R3 == BST_CHECKED ?
+		m_Moga.m_swapL2R2andL3R3 = true
+		: m_Moga.m_swapL2R2andL3R3 = false;
+
 	m_Moga.m_Driver = m_iDriver;
-	DefaultRegString.Format(_T("%d,%d,%d,%d"), BTList_idx, c_vJoyID.GetCurSel(), m_iTriggerMode, m_iDriver);
+	DefaultRegString.Format(_T("%d,%d,%d,%d,&d,&d"), BTList_idx, c_vJoyID.GetCurSel(), 
+		m_iTriggerMode, m_iDriver, m_dpadAsAnalog, m_swapL2R2andL3R3);
 
 	AfxBeginThread(MogaHandler_Launch, &m_Moga);
 }
@@ -685,4 +701,3 @@ UINT CMogaSerialDlg::BTAddressDiscovery(LPVOID pParam)
 	::PostMessage(btt_p->pThis->m_hWnd, WM_BT_DISCOVERY_DONE, i, (LPARAM)btt_p);
 	return 0;
 }
-

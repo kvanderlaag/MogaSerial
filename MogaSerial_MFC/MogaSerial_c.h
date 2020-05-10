@@ -41,6 +41,8 @@ public:
 	BT_ADDR         m_Addr;
 	SOCKET          m_Socket;
 	int				m_TriggerMode;
+	bool			m_dpadAsAnalog;
+	bool			m_swapL2R2andL3R3;
 	int				m_Driver;
 	unsigned char   m_CID;
 	unsigned char   m_State[MOGABUF_LEN];

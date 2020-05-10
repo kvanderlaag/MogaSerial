@@ -236,7 +236,7 @@ int vJoyCtrl::vJoyAttach(CMogaSerialMain *t, bool connect)
 }
 
 
-// hid default - A=1 B=2 X=3 Y=4 L1=5 R1=6 SEL=7 START=8 L3=9 R3=10
+// hid default - A=1 B=2 X=3 Y=4 L1=5 R1=6 SEL=7 START=8 L3=11 R3=12
 // raw - 0000 0000  0000 0000  0000 0000  0000 0000  0000 0000  0000 0000  0000 0000  0000 0000
 //       RLSS XABY  RLRL HHHH  left stk   left stk   right stk  right stk    left       right
 //       11et       3322 EWSN   x axis     y axis     x axis     y axis     trigger    trigger
@@ -257,24 +257,77 @@ void vJoyCtrl::vJoyUpdate(CMogaSerialMain *t)
 	vJoyData.lButtons |= (((t->m_State[0] >> 7) & 1) << 5);  // R1
 	vJoyData.lButtons |= (((t->m_State[0] >> 5) & 1) << 6);  // Select
 	vJoyData.lButtons |= (((t->m_State[0] >> 4) & 1) << 7);  // Start
-	vJoyData.lButtons |= (((t->m_State[1] >> 6) & 1) << 8);  // L3
-	vJoyData.lButtons |= (((t->m_State[1] >> 7) & 1) << 9);  // R3
+	vJoyData.lButtons |= (((t->m_State[1] >> 6) & 1) << (t->m_swapL2R2andL3R3 ? 10 : 8));  // L3
+	vJoyData.lButtons |= (((t->m_State[1] >> 7) & 1) << (t->m_swapL2R2andL3R3 ? 11 : 9));  // R3
 	
-	switch((t->m_State[1] & 0x0F))
+	if (!t->m_dpadAsAnalog)
 	{
-	case 0x01:  vJoyData.bHats = 0;     break;  // Hat N
-	case 0x09:  vJoyData.bHats = 4500;  break;  // Hat NE
-	case 0x08:  vJoyData.bHats = 9000;  break;  // Hat E
-	case 0x0A:  vJoyData.bHats = 13500; break;  // Hat SE
-	case 0x02:  vJoyData.bHats = 18000; break;  // Hat S
-	case 0x06:  vJoyData.bHats = 22500; break;  // Hat SW
-	case 0x04:  vJoyData.bHats = 27000; break;  // Hat W
-	case 0x05:  vJoyData.bHats = 31500; break;  // Hat NW
-	default:    vJoyData.bHats = -1;
+		switch ((t->m_State[1] & 0x0F))
+		{
+		case 0x01:  vJoyData.bHats = 0;     break;  // Hat N
+		case 0x09:  vJoyData.bHats = 4500;  break;  // Hat NE
+		case 0x08:  vJoyData.bHats = 9000;  break;  // Hat E
+		case 0x0A:  vJoyData.bHats = 13500; break;  // Hat SE
+		case 0x02:  vJoyData.bHats = 18000; break;  // Hat S
+		case 0x06:  vJoyData.bHats = 22500; break;  // Hat SW
+		case 0x04:  vJoyData.bHats = 27000; break;  // Hat W
+		case 0x05:  vJoyData.bHats = 31500; break;  // Hat NW
+		default:    vJoyData.bHats = -1;
+		}
+	}
+	else
+	{
+		vJoyData.bHats = -1;
 	}
 
 	vJoyData.wAxisX = FixAxis(t->m_State[2]) * 128;
 	vJoyData.wAxisY = (0xff - FixAxis(t->m_State[3])) * 128;  //invert
+
+	// account for dpad as analog
+	if (t->m_dpadAsAnalog)
+	{
+		constexpr int k_FULL = 0x7F80;
+		constexpr int k_NONE = 0x0000;
+		constexpr int k_CENTRED = 0x3FC0;
+		switch ((t->m_State[1] & 0x0F))
+		{
+		case 0x01:  
+			vJoyData.wAxisX = k_CENTRED;
+			vJoyData.wAxisY = k_NONE;
+			break;  // Hat N
+		case 0x09:  
+			vJoyData.wAxisX = k_FULL;
+			vJoyData.wAxisY = k_NONE;
+			break;  // Hat NE
+		case 0x08:  
+			vJoyData.wAxisX = k_FULL;
+			vJoyData.wAxisY = k_CENTRED;
+			break;  // Hat E
+		case 0x0A:  
+			vJoyData.wAxisX = k_FULL;
+			vJoyData.wAxisY = k_FULL;
+			break;  // Hat SE
+		case 0x02:  
+			vJoyData.wAxisX = k_CENTRED;
+			vJoyData.wAxisY = k_FULL;
+			break;  // Hat S
+		case 0x06:  
+			vJoyData.wAxisX = k_NONE;
+			vJoyData.wAxisY = k_FULL;
+			break;  // Hat SW
+		case 0x04:  
+			vJoyData.wAxisX = k_NONE;
+			vJoyData.wAxisY = k_CENTRED;
+			break;  // Hat W
+		case 0x05:  
+			vJoyData.wAxisX = k_NONE;
+			vJoyData.wAxisY = k_NONE;
+			break;  // Hat NW
+		default:
+			break;
+		}
+	}
+
 	vJoyData.wAxisXRot = FixAxis(t->m_State[4]) * 128;
 	vJoyData.wAxisYRot = (0xff - FixAxis(t->m_State[5])) * 128;  //invert
 
@@ -288,8 +341,8 @@ void vJoyCtrl::vJoyUpdate(CMogaSerialMain *t)
 		vJoyData.wAxisZRot = 0x4000;
 		break;
 	case 2:  // Triggers as buttons
-		vJoyData.lButtons |= (((t->m_State[1] >> 4) & 1) << 10);  // L2
-		vJoyData.lButtons |= (((t->m_State[1] >> 5) & 1) << 11);  // R2
+		vJoyData.lButtons |= (((t->m_State[1] >> 4) & 1) << (t->m_swapL2R2andL3R3 ? 8 : 10));  // L2
+		vJoyData.lButtons |= (((t->m_State[1] >> 5) & 1) << (t->m_swapL2R2andL3R3 ? 9 : 11));  // R2
 		vJoyData.wAxisZ = 0x4000;;
 		vJoyData.wAxisZRot = 0x4000;;
 		break;

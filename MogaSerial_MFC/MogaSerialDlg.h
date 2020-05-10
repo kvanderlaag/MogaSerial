@@ -89,6 +89,8 @@ public:
 	int m_iDriver;
 	CButton c_TModeA, c_TModeB, c_TModeC;
 	int m_iTriggerMode;
+	int m_dpadAsAnalog;
+	int m_swapL2R2andL3R3;
 	CEdit c_Output;
 	CMFCButton c_StopGo;
 	CMFCButton c_Debug;
